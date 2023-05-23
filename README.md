@@ -1,2 +1,2 @@
-# SiD
-Repositório destinado a realização das atividades passadas na disciplina de Sistemas Distribuidos.
+# Distributed Systems
+This repository was created to carry out activities in the faculty related to Distributed Systems
