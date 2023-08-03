@@ -2,9 +2,7 @@ import pika
 import time
 import random
 
-services = ["cortar_cabelo", "cortar_barba", "cortar_bigode"]
-
-def request_service(service):
+def request_service(cliente, service):
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
 
@@ -17,28 +15,47 @@ def request_service(service):
                           routing_key=service,
                           properties=pika.BasicProperties(
                               reply_to=callback_queue,
-                              ),
+                              correlation_id=str(cliente['clienteid'])
+                          ),
                           body='')
 
-    while True:
+    response = None
+    while response is None:
         method_frame, header_frame, body = channel.basic_get(callback_queue)
-        if method_frame:
+        if method_frame and str(cliente['clienteid']) == header_frame.correlation_id:
             channel.basic_ack(method_frame.delivery_tag)
-            break
+            response = body
         time.sleep(0.1)
 
     connection.close()
+    return response
 
 if __name__ == "__main__":
     num_clients = 5
     num_cycles = 20
-    client_id = random.randint(1, num_clients)
+    clientes = []
+    clienteAtual = ''
 
-    for cycle in range(num_cycles):
-        print(f"Cliente {client_id} está competindo no ciclo {cycle+1}...")
-        random.shuffle(services)
-        for service in services:
-            request_service(service)
+    for i in range(num_clients):
+        clientes.append({
+            "clienteid": i,
+            "service": ""
+        })
 
-        # Passa o token para o próximo cliente
-        client_id = (client_id % num_clients) + 1
+    for i in range(num_cycles):
+        print(f"\n--- Ciclo {i} ---")
+        
+        clienteAtual = random.choice(clientes)
+
+        if clienteAtual['service'] == '':
+            clienteAtual['service'] = 'cortar_cabelo'
+        elif clienteAtual['service'] == 'cortar_cabelo':
+            clienteAtual['service'] = 'cortar_barba'
+        elif clienteAtual['service'] == 'cortar_barba':
+            clienteAtual['service'] = 'cortar_bigode'
+        else:
+            clienteAtual['service'] = 'cortar_cabelo'
+
+        print(f"Cliente {clienteAtual['clienteid']} será atendido com: {clienteAtual['service']}!")
+        response = request_service(clienteAtual, clienteAtual['service'])
+        print(f"Resposta do servidor para o Cliente {clienteAtual['clienteid']}: {response.decode()}")

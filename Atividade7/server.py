@@ -1,23 +1,33 @@
 import pika
 import time
 
+contador = 0
+
 def cortar_cabelo():
+    global contador
     time.sleep(3)
-    print("Cabelo cortado!")
+    print(f"Ciclo {contador}: Cabelo cortado!")
+    contador += 1
     return "Cabelo cortado!"
 
 def cortar_barba():
+    global contador
     time.sleep(4)
-    print("Barba cortada!")
+    print(f"Ciclo {contador}: Barba cortada!")
+    contador += 1
     return "Barba cortada!"
 
 def cortar_bigode():
+    global contador
     time.sleep(5)
-    print("Bigode cortado!")
+    print(f"Ciclo {contador}: Bigode cortado!")
+    contador += 1
     return "Bigode cortado!"
 
 def on_request(ch, method, props, body):
     response = None
+    client_id = int(props.correlation_id)
+
     if method.routing_key == "cortar_cabelo":
         response = cortar_cabelo()
     elif method.routing_key == "cortar_barba":
@@ -27,10 +37,14 @@ def on_request(ch, method, props, body):
     else:
         print("Serviço desconhecido:", method.routing_key)
 
-    ch.basic_publish(exchange='',
-                     routing_key=props.reply_to,
-                     properties=pika.BasicProperties(correlation_id=props.correlation_id),
-                     body=response)
+    ch.basic_publish(
+        exchange='',
+        routing_key=props.reply_to,
+        properties=pika.BasicProperties(
+            correlation_id=props.correlation_id
+        ),
+        body=response.encode()
+    )
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
